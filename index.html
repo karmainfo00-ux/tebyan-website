@@ -172,6 +172,7 @@ function tbySendLead(payload){
     grade       : payload.grade || '',
     subject     : payload.subject || '',
     time        : payload.time || '',
+    note        : payload.note || '',
     event_id    : payload.event_id || '',
     utm_source  : attr.utm_source || '',
     utm_campaign: attr.utm_campaign || '',
@@ -1043,7 +1044,7 @@ Object.keys(waButtons).forEach(function(id){
   el.addEventListener('click', function(){
     var eventId = tbyEventId();
     tbyTrack('Contact', { content_name: 'WhatsApp — ' + waButtons[id] }, eventId);
-    tbySendLead({ type: 'ضغطة واتساب', subject: waButtons[id], event_id: eventId });
+    tbySendLead({ type: 'ضغطة واتساب', note: waButtons[id], event_id: eventId });
   });
 });
 
