@@ -135,11 +135,33 @@ function tbyTrack(eventName, params, eventId){
   } catch(e){}
 }
 
+/* ===== لوحة التشخيص — تظهر فقط لو الرابط فيه ?debug=1 ===== */
+function tbyDebug(result){
+  if(!/[?&]debug=1/.test(window.location.search)) return;
+  var box = document.getElementById('tbyDebugBox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'tbyDebugBox';
+    box.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:99999;max-width:340px;'+
+      'background:#0B2A4A;color:#fff;border:1px solid #3FC7E8;border-radius:12px;padding:12px 14px;'+
+      'font:12px/1.6 monospace;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word;'+
+      'box-shadow:0 10px 30px rgba(0,0,0,.5)';
+    document.body.appendChild(box);
+  }
+  var ok = result && result.ok;
+  box.style.borderColor = ok ? '#3FC7E8' : '#ff6b6b';
+  box.textContent = (ok ? '\u2705 SHEET OK\n' : '\u274C SHEET FAILED\n') + JSON.stringify(result, null, 1);
+}
+
 /* إرسال الليد إلى Google Sheet
-   ملاحظة: no-cors + text/plain مقصودة — application/json تفشل بصمت */
+   sendBeacon هو الأساس لأنه الوحيد الذي يُكمل الطلب
+   حتى لو غادر المستخدم الصفحة إلى واتساب في نفس اللحظة. */
 function tbySendLead(payload){
   var cfg = window.TEBYAN_CONFIG || {};
-  if(!cfg.SHEET_ENDPOINT || cfg.SHEET_ENDPOINT.indexOf('http') !== 0) return;
+  if(!cfg.SHEET_ENDPOINT || cfg.SHEET_ENDPOINT.indexOf('http') !== 0){
+    tbyDebug({ ok:false, error:'SHEET_ENDPOINT is not set' });
+    return;
+  }
   var attr = window.TBY_ATTR || {};
   var body = {
     secret      : cfg.SHEET_SECRET,
@@ -152,26 +174,48 @@ function tbySendLead(payload){
     time        : payload.time || '',
     event_id    : payload.event_id || '',
     utm_source  : attr.utm_source || '',
-    utm_medium  : attr.utm_medium || '',
     utm_campaign: attr.utm_campaign || '',
     utm_content : attr.utm_content || '',
-    utm_term    : attr.utm_term || '',
-    fbclid      : attr.fbclid || '',
-    ttclid      : attr.ttclid || '',
     referrer    : attr.referrer || '',
-    landing     : attr.landing || '',
-    device      : tbyDevice(),
-    lang        : document.documentElement.lang || 'ar'
+    landing     : attr.landing || ''
   };
+
+  var qs = Object.keys(body).map(function(k){
+    return k + '=' + encodeURIComponent(body[k]);
+  }).join('&');
+  var getUrl = cfg.SHEET_ENDPOINT + '?' + qs;
+
+  // 1) sendBeacon — يُسلَّم حتى بعد مغادرة الصفحة
+  var beaconSent = false;
   try {
-    fetch(cfg.SHEET_ENDPOINT, {
-      method   : 'POST',
-      mode     : 'no-cors',
-      keepalive: true,
-      headers  : { 'Content-Type': 'text/plain;charset=utf-8' },
-      body     : JSON.stringify(body)
-    });
+    if(navigator.sendBeacon){
+      var blob = new Blob([JSON.stringify(body)], { type:'text/plain;charset=utf-8' });
+      beaconSent = navigator.sendBeacon(cfg.SHEET_ENDPOINT, blob);
+    }
   } catch(e){}
+
+  // 2) لو المتصفح لا يدعم sendBeacon أو رفض الطلب
+  if(!beaconSent){
+    try {
+      fetch(getUrl, { method:'GET', keepalive:true, mode:'no-cors' });
+    } catch(e){
+      try {
+        var img = new Image();
+        img.src = getUrl;
+      } catch(e2){}
+    }
+  }
+
+  // 3) في وضع التشخيص فقط: طلب إضافي رده قابل للقراءة
+  //    (Apps Script يمنع التكرار عبر Event ID)
+  if(/[?&]debug=1/.test(window.location.search)){
+    fetch(getUrl, { method:'GET' })
+      .then(function(r){ return r.json(); })
+      .then(function(j){ tbyDebug(j); })
+      .catch(function(err){
+        tbyDebug({ ok:false, beaconSent:beaconSent, error:String(err) });
+      });
+  }
 }
 </script>
 <style>
@@ -844,7 +888,7 @@ nav.scrolled .nav-inner{padding-top:10px; padding-bottom:10px;}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A11.8 11.8 0 0 0 12 0 11.9 11.9 0 0 0 .1 12.1c0 2.1.6 4.1 1.6 5.9L0 24l6.2-1.6a12 12 0 0 0 5.8 1.5h0A11.9 11.9 0 0 0 24 12.1a11.8 11.8 0 0 0-3.5-8.6Z" opacity="0"/></svg>
         <span data-en="Send via WhatsApp">إرسال عبر واتساب</span>
       </button>
-      <p class="text-white/40 text-xs text-center" data-en="Submitting opens WhatsApp with your details pre-filled so our team can reach you.">سيتم فتح واتساب برسالة جاهزة تتضمن بياناتك ليتواصل معك فريقنا فورًا.</p>
+      <p class="text-white/40 text-xs text-center" data-en="We'll continue the conversation on WhatsApp and confirm your class time.">سنكمل معك عبر واتساب لتأكيد موعد الحصة.</p>
     </form>
   </div>
 </section>
@@ -984,7 +1028,7 @@ nav.scrolled .nav-inner{padding-top:10px; padding-bottom:10px;}
 <script>
 // ===== WhatsApp number: REPLACE with TEBYAN's real number (country code, no + or 00) =====
 const WHATSAPP_NUMBER = "966543006655";
-const defaultWaMsg = "مرحبًا تبيان، أرغب في معرفة المزيد عن الحصص المباشرة.";
+const defaultWaMsg = "السلام عليكم ورحمة الله، أود الاستفسار عن الحصص المباشرة الفردية.";
 function waLink(msg){ return "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(msg); }
 // روابط واتساب + تتبّع الضغطات كحدث Contact
 var waButtons = {
@@ -1070,26 +1114,23 @@ document.getElementById('bookingForm').addEventListener('submit', function(e){
   const grade = document.getElementById('f_grade').value.trim();
   const subject = document.getElementById('f_subject').value.trim();
   const time = document.getElementById('f_time').value.trim();
-  let msg = "مرحبًا تبيان، أرغب في حجز حصة تجريبية:\n";
-  msg += "الاسم: " + name + "\n";
-  msg += "رقم التواصل: " + phone + "\n";
-  msg += "المنهج: " + curriculum + "\n";
-  if(grade) msg += "المرحلة: " + grade + "\n";
-  if(subject) msg += "المادة: " + subject + "\n";
-  if(time) msg += "الوقت المفضل: " + time + "\n";
-  // ===== تتبّع التحويل + حفظ الليد في الشيت =====
+  // رسالة بصيغة طبيعية — تُقرأ كرسالة كتبها ولي الأمر لا كنموذج مُولَّد
+  var msg = "السلام عليكم ورحمة الله،\n";
+  var sentence = "أرغب في حجز الحصة التجريبية المجانية";
+  if(name) sentence += " لـ " + name;
+  var info = [];
+  if(grade) info.push(grade);
+  if(curriculum) info.push("المنهج " + curriculum);
+  if(info.length) sentence += "، " + info.join(" — ");
+  if(subject) sentence += "، في مادة " + subject;
+  msg += sentence + ".";
+  if(time) msg += "\nالوقت الأنسب لنا " + time + ".";
+  msg += "\nوشكرًا لكم.";
+
+  // ===== حفظ الليد أولاً ثم فتح واتساب =====
+  // الترتيب مهم: لو فُتح واتساب أولاً تُغادر الصفحة قبل اكتمال التسجيل
   var eventId = tbyEventId();
   var waUrl   = waLink(msg);
-
-  // يُفتح واتساب أولاً للحفاظ على الـ user gesture (وإلا يحجبه المتصفح)
-  var win = window.open(waUrl, "_blank");
-
-  tbyTrack('Lead', {
-    content_name    : 'نموذج حجز حصة تجريبية',
-    content_category: curriculum,
-    currency        : 'SAR',
-    value           : 0
-  }, eventId);
 
   tbySendLead({
     type      : 'نموذج حجز',
@@ -1102,6 +1143,15 @@ document.getElementById('bookingForm').addEventListener('submit', function(e){
     event_id  : eventId
   });
 
+  tbyTrack('Lead', {
+    content_name    : 'نموذج حجز حصة تجريبية',
+    content_category: curriculum,
+    currency        : 'SAR',
+    value           : 0
+  }, eventId);
+
+  // فتح واتساب بعد إرسال البيانات
+  var win = window.open(waUrl, "_blank");
   if(!win){ window.location.href = waUrl; }
 });
 
