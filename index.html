@@ -8,6 +8,172 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+
+<!-- ================================================================
+     TRACKING & LEAD CAPTURE — عدّلي القيم في TEBYAN_CONFIG فقط
+     ================================================================ -->
+<script>
+window.TEBYAN_CONFIG = {
+  // رابط الـ Web app من Apps Script (ينتهي بـ /exec)
+  SHEET_ENDPOINT : "https://script.google.com/macros/s/AKfycbwXwcE-YJxYAcodhlRYExPISPqEctB0w2o8kzPiiDPW6pMW7e5bFIka89JpNem55V9s/exec",
+  // يجب أن يطابق SHARED_SECRET في ملف Apps Script
+  SHEET_SECRET   : "tebyan-2026",
+  // معرّفات البيكسل — اتركي أي واحد فارغاً إن لم يكن مستخدماً
+  META_PIXEL_ID  : "PASTE_META_PIXEL_ID_HERE",
+  TIKTOK_PIXEL_ID: "",
+  SNAP_PIXEL_ID  : "",
+  GA4_ID         : ""
+};
+</script>
+
+<!-- ===== Meta Pixel (مثبّت مباشرة في الـ head — ليس عبر GTM) ===== -->
+<script>
+(function(){
+  var id = (window.TEBYAN_CONFIG || {}).META_PIXEL_ID;
+  if(!id || id.indexOf('PASTE') === 0) return;
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', id);
+  fbq('track', 'PageView');
+})();
+</script>
+<noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?ev=PageView&noscript=1"/></noscript>
+
+<!-- ===== TikTok Pixel (اختياري) ===== -->
+<script>
+(function(){
+  var id = (window.TEBYAN_CONFIG || {}).TIKTOK_PIXEL_ID;
+  if(!id) return;
+  !function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=r+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+  ttq.load(id); ttq.page();
+  }(window,document,'ttq');
+})();
+</script>
+
+<!-- ===== Snapchat Pixel (اختياري) ===== -->
+<script>
+(function(){
+  var id = (window.TEBYAN_CONFIG || {}).SNAP_PIXEL_ID;
+  if(!id) return;
+  (function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';var r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u)})(window,document,'https://sc-static.net/scevent.min.js');
+  snaptr('init', id); snaptr('track', 'PAGE_VIEW');
+})();
+</script>
+
+<!-- ===== GA4 (اختياري) ===== -->
+<script>
+(function(){
+  var id = (window.TEBYAN_CONFIG || {}).GA4_ID;
+  if(!id) return;
+  var s = document.createElement('script'); s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function(){ dataLayer.push(arguments); };
+  gtag('js', new Date()); gtag('config', id);
+})();
+</script>
+
+<!-- ===== التقاط بيانات الحملة (UTM) وحفظها طوال الجلسة ===== -->
+<script>
+(function(){
+  var keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','ttclid','gclid','sccid'];
+  var stored = {};
+  try { stored = JSON.parse(sessionStorage.getItem('tby_attr') || '{}'); } catch(e){}
+  var params = new URLSearchParams(window.location.search);
+  keys.forEach(function(k){
+    var v = params.get(k);
+    if(v){ stored[k] = v; }
+  });
+  if(!stored.landing){
+    stored.landing   = window.location.href.split('#')[0];
+    stored.referrer  = document.referrer || '';
+    stored.first_hit = new Date().toISOString();
+  }
+  try { sessionStorage.setItem('tby_attr', JSON.stringify(stored)); } catch(e){}
+  window.TBY_ATTR = stored;
+})();
+
+/* ===== أدوات التتبّع ===== */
+function tbyEventId(){
+  return 'tby_' + Date.now() + '_' + Math.random().toString(36).slice(2,10);
+}
+
+function tbyDevice(){
+  var w = window.innerWidth || 0;
+  if(w < 768) return 'موبايل';
+  if(w < 1024) return 'تابلت';
+  return 'ديسكتوب';
+}
+
+/* إطلاق حدث التحويل على كل المنصات المفعّلة */
+function tbyTrack(eventName, params, eventId){
+  params = params || {};
+  try { if(window.fbq){ fbq('track', eventName, params, { eventID: eventId }); } } catch(e){}
+  try {
+    if(window.ttq){
+      ttq.track(eventName === 'Lead' ? 'SubmitForm' : 'Contact', {
+        content_name: params.content_name || eventName
+      });
+    }
+  } catch(e){}
+  try {
+    if(window.snaptr){
+      snaptr('track', eventName === 'Lead' ? 'SIGN_UP' : 'CUSTOM_EVENT_1');
+    }
+  } catch(e){}
+  try {
+    if(window.gtag){
+      gtag('event', eventName === 'Lead' ? 'generate_lead' : 'contact', {
+        event_id: eventId,
+        content_name: params.content_name || eventName
+      });
+    }
+  } catch(e){}
+}
+
+/* إرسال الليد إلى Google Sheet
+   ملاحظة: no-cors + text/plain مقصودة — application/json تفشل بصمت */
+function tbySendLead(payload){
+  var cfg = window.TEBYAN_CONFIG || {};
+  if(!cfg.SHEET_ENDPOINT || cfg.SHEET_ENDPOINT.indexOf('http') !== 0) return;
+  var attr = window.TBY_ATTR || {};
+  var body = {
+    secret      : cfg.SHEET_SECRET,
+    type        : payload.type || 'نموذج حجز',
+    name        : payload.name || '',
+    phone       : payload.phone || '',
+    curriculum  : payload.curriculum || '',
+    grade       : payload.grade || '',
+    subject     : payload.subject || '',
+    time        : payload.time || '',
+    event_id    : payload.event_id || '',
+    utm_source  : attr.utm_source || '',
+    utm_medium  : attr.utm_medium || '',
+    utm_campaign: attr.utm_campaign || '',
+    utm_content : attr.utm_content || '',
+    utm_term    : attr.utm_term || '',
+    fbclid      : attr.fbclid || '',
+    ttclid      : attr.ttclid || '',
+    referrer    : attr.referrer || '',
+    landing     : attr.landing || '',
+    device      : tbyDevice(),
+    lang        : document.documentElement.lang || 'ar'
+  };
+  try {
+    fetch(cfg.SHEET_ENDPOINT, {
+      method   : 'POST',
+      mode     : 'no-cors',
+      keepalive: true,
+      headers  : { 'Content-Type': 'text/plain;charset=utf-8' },
+      body     : JSON.stringify(body)
+    });
+  } catch(e){}
+}
+</script>
 <style>
 :root{
   --navy-deep:#081E36;
@@ -820,9 +986,22 @@ nav.scrolled .nav-inner{padding-top:10px; padding-bottom:10px;}
 const WHATSAPP_NUMBER = "966543006655";
 const defaultWaMsg = "مرحبًا تبيان، أرغب في معرفة المزيد عن الحصص المباشرة.";
 function waLink(msg){ return "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(msg); }
-document.getElementById('waFloat').href = waLink(defaultWaMsg);
-document.getElementById('mobileWaLink').href = waLink(defaultWaMsg);
-document.getElementById('ctaWaLink').href = waLink(defaultWaMsg);
+// روابط واتساب + تتبّع الضغطات كحدث Contact
+var waButtons = {
+  waFloat      : 'زر واتساب العائم',
+  mobileWaLink : 'شريط الموبايل',
+  ctaWaLink    : 'زر الدعوة للإجراء'
+};
+Object.keys(waButtons).forEach(function(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.href = waLink(defaultWaMsg);
+  el.addEventListener('click', function(){
+    var eventId = tbyEventId();
+    tbyTrack('Contact', { content_name: 'WhatsApp — ' + waButtons[id] }, eventId);
+    tbySendLead({ type: 'ضغطة واتساب', subject: waButtons[id], event_id: eventId });
+  });
+});
 
 // Nav scroll effect + mobile sticky bar visibility
 const nav = document.getElementById('mainNav');
@@ -898,7 +1077,32 @@ document.getElementById('bookingForm').addEventListener('submit', function(e){
   if(grade) msg += "المرحلة: " + grade + "\n";
   if(subject) msg += "المادة: " + subject + "\n";
   if(time) msg += "الوقت المفضل: " + time + "\n";
-  window.open(waLink(msg), "_blank");
+  // ===== تتبّع التحويل + حفظ الليد في الشيت =====
+  var eventId = tbyEventId();
+  var waUrl   = waLink(msg);
+
+  // يُفتح واتساب أولاً للحفاظ على الـ user gesture (وإلا يحجبه المتصفح)
+  var win = window.open(waUrl, "_blank");
+
+  tbyTrack('Lead', {
+    content_name    : 'نموذج حجز حصة تجريبية',
+    content_category: curriculum,
+    currency        : 'SAR',
+    value           : 0
+  }, eventId);
+
+  tbySendLead({
+    type      : 'نموذج حجز',
+    name      : name,
+    phone     : phone,
+    curriculum: curriculum,
+    grade     : grade,
+    subject   : subject,
+    time      : time,
+    event_id  : eventId
+  });
+
+  if(!win){ window.location.href = waUrl; }
 });
 
 // ===== AR / EN toggle =====
